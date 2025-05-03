@@ -6,19 +6,37 @@ const register = async (req, res) => {
   console.log("Registering user", req.body);
   const { username, email, password } = req.body;
 
+  // Validação dos campos obrigatórios
   if (!username || !email || !password) {
     return res.status(400).json({ message: "Username, email, and password are required" });
   }
 
+  // Validação do formato do email
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    return res.status(400).json({ message: "Invalid email format" });
+  }
+
+  // Validação da senha: mínimo 8 caracteres, pelo menos uma letra e um número
+  const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/;
+  if (!passwordRegex.test(password)) {
+    return res.status(400).json({ 
+      message: "Password must be at least 8 characters long and include at least one letter and one number" 
+    });
+  }
+
   try {
+    // Verifica se o email ou username já existem
     const existingUser = await User.findUserByUsernameOrEmail(username, email);
     if (existingUser) {
       return res.status(400).json({ message: "Username or email already exists" });
     }
 
+    // Criptografa a senha
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
+    // Cria o novo usuário
     const savedUser = await User.createUser(username, email, hashedPassword);
     return res.status(200).json({ message: 'User registered successfully', user: savedUser });
   } catch (error) {
@@ -31,6 +49,7 @@ const login = async (req, res) => {
   console.log("Logging in user", req.body);
   const { username, email, password } = req.body;
 
+  // Validação dos campos
   if (!password || (!username && !email)) {
     return res.status(400).json({ message: "Username or email and password are required" });
   }
@@ -62,13 +81,14 @@ const login = async (req, res) => {
     });
   } catch (error) {
     console.error("Error logging in user", error);
-    return res.status(500).json({ message: `Error logging in user: ${error.message}` });
+    return res.status(500).json({ message: `Error logging in user: ${error}` });
   }
 };
 
 const getAllUsers = async (req, res) => {
   try {
-    const users = await User.findAllUsers();
+    // Busca todos os usuários, excluindo o campo password
+    const users = await User.getAllUsersWithoutPassword();
     return res.status(200).json(users);
   } catch (error) {
     console.error("Error fetching users:", error.message);
