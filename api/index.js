@@ -16,7 +16,7 @@ const app = express();
 
 app.use(express.json());
 app.use("/", userRoute);
-app.use("/token", tokenRoute);
+app.use("/", tokenRoute);
 app.get('/', (req, res) => {
   res.send('Hello World!');
 });
