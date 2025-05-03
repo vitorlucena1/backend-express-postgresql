@@ -88,7 +88,7 @@ const login = async (req, res) => {
 const getAllUsers = async (req, res) => {
   try {
     // Busca todos os usuários, excluindo o campo password
-    const users = await User.getAllUsersWithoutPassword();
+    const users = await User.findAllUsers();
     return res.status(200).json(users);
   } catch (error) {
     console.error("Error fetching users:", error.message);
