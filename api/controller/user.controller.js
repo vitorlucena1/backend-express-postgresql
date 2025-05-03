@@ -1,0 +1,79 @@
+import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
+import User from '../models/User.js';
+
+const register = async (req, res) => {
+  console.log("Registering user", req.body);
+  const { username, email, password } = req.body;
+
+  if (!username || !email || !password) {
+    return res.status(400).json({ message: "Username, email, and password are required" });
+  }
+
+  try {
+    const existingUser = await User.findUserByUsernameOrEmail(username, email);
+    if (existingUser) {
+      return res.status(400).json({ message: "Username or email already exists" });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    const savedUser = await User.createUser(username, email, hashedPassword);
+    return res.status(200).json({ message: 'User registered successfully', user: savedUser });
+  } catch (error) {
+    console.error("Error saving user", error);
+    return res.status(500).json({ message: `Error saving user: ${error}` });
+  }
+};
+
+const login = async (req, res) => {
+  console.log("Logging in user", req.body);
+  const { username, email, password } = req.body;
+
+  if (!password || (!username && !email)) {
+    return res.status(400).json({ message: "Username or email and password are required" });
+  }
+
+  try {
+    // Busca o usuário por username ou email
+    const user = await User.findUserByUsernameOrEmail(username, email);
+    if (!user) {
+      console.log("User not found");
+      return res.status(400).json({ message: 'User not found' });
+    }
+
+    // Verifica se a senha está correta
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      console.log("Invalid credentials");
+      return res.status(400).json({ message: 'Invalid credentials' });
+    }
+
+    // Gera o token JWT
+    const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+    console.log("Login successful, token generated:", token);
+
+    // Retorna o token e os dados do usuário
+    return res.status(200).json({ 
+      message: 'Login successful', 
+      token, 
+      user: { id: user.id, username: user.username, email: user.email } 
+    });
+  } catch (error) {
+    console.error("Error logging in user", error);
+    return res.status(500).json({ message: `Error logging in user: ${error.message}` });
+  }
+};
+
+const getAllUsers = async (req, res) => {
+  try {
+    const users = await User.findAllUsers();
+    return res.status(200).json(users);
+  } catch (error) {
+    console.error("Error fetching users:", error.message);
+    return res.status(500).json({ message: `An error occurred while fetching users: ${error.message}` });
+  }
+};
+
+export default { register, login, getAllUsers };
