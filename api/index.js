@@ -15,7 +15,7 @@ db.connect()
 const app = express();
 
 app.use(express.json());
-app.use("/", userRoute);
+app.use("/users", userRoute);
 app.use("/", tokenRoute);
 app.get('/', (req, res) => {
   res.send('Hello World!');
